@@ -48,6 +48,7 @@ class BencodeEncoder(object):
             self.encode_func[StringType] = self.encode_bytes
             self.encode_func[TupleType] = self.encode_list
             self.encode_func[UnicodeType] = self.encode_string
+            self.encode_func[NoneType] = self.encode_none
 
             if OrderedDict is not None:
                 self.encode_func[OrderedDict] = self.encode_dict
@@ -63,10 +64,12 @@ class BencodeEncoder(object):
             self.encode_func[bool] = self.encode_bool
             self.encode_func[dict] = self.encode_dict
             self.encode_func[int] = self.encode_int
+            self.encode_func[float] = self.encode_float
             self.encode_func[list] = self.encode_list
             self.encode_func[str] = self.encode_string
             self.encode_func[tuple] = self.encode_list
             self.encode_func[bytes] = self.encode_bytes
+            self.encode_func[None] = self.encode_none
 
     def encode(self, value):
         # type: (Union[Tuple, List, OrderedDict, Dict, bool, int, str, bytes]) -> bytes
@@ -81,6 +84,9 @@ class BencodeEncoder(object):
         """
         r = deque()  # makes more sense for something with lots of appends
 
+        if value == None:
+            return b''.join(r)
+
         # Encode provided value
         self.encode_func[type(value)](value, r)
 
@@ -94,6 +100,12 @@ class BencodeEncoder(object):
     def encode_int(self, x, r):
         # type: (int, Deque[bytes]) -> None
         r.extend((b'i', str(x).encode('utf-8'), b'e'))
+
+    def encode_float(self, x, r):
+        r.extend((b'f', str(x).encode('utf-8'), b'e'))
+
+    def encode_none(self, x, r):
+        r.extend((b'null', str('null').encode('utf-8'), b'e'))
 
     def encode_bool(self, x, r):
         # type: (bool, Deque[bytes]) -> None
@@ -128,7 +140,8 @@ class BencodeEncoder(object):
         ilist.sort(key=lambda kv: kv[0])
 
         for k, v in ilist:
-            self.encode_func[type(k)](k, r)
-            self.encode_func[type(v)](v, r)
+            if v != None:
+                self.encode_func[type(k)](k, r)
+                self.encode_func[type(v)](v, r)
 
         r.append(b'e')
